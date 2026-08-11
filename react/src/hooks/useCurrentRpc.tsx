@@ -1,4 +1,4 @@
-import { EnvironmentConstants, RpcEndpoint } from '@drift/common';
+import { EnvironmentConstants, RpcEndpoint } from '@velocity-exchange/common';
 import { singletonHook } from 'react-singleton-hook';
 import { useCommonDriftStore } from '../stores';
 import { useSyncLocalStorage } from './useSyncLocalStorage';

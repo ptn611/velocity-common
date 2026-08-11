@@ -77,5 +77,5 @@ Per-package scripts (`build`, `test`, `watch`, etc.) live in each subpackage's `
 
 ## Notes
 
-- The package previously published as `@drift-labs/common` is now `@velocity-exchange/common` (see `common-ts/package.json`). Older docs or examples referencing `@drift-labs/common` should be read as the same package.
+- The package previously published as `@velocity-exchange/common` is now `@velocity-exchange/common` (see `common-ts/package.json`). Older docs or examples referencing `@velocity-exchange/common` should be read as the same package.
 - `icons` is marked `private` and is not published — it is consumed locally by `react` and downstream apps via a file-path dependency.

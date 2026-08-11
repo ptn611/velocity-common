@@ -2,7 +2,7 @@ import {
 	PriorityFeeCalculator,
 	PriorityFeeStrategyFactory,
 	SANITY_CHECK_ABS_MAX_FEE_IN_SOL,
-} from '@drift/common';
+} from '@velocity-exchange/common';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
 	BOOSTED_MULITPLIER,

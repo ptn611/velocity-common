@@ -12,7 +12,7 @@ import {
 	getMarketsAndOraclesForSubscription,
 	initialize,
 } from '@velocity-exchange/sdk';
-import { EnvironmentConstants, RpcEndpoint } from '@drift/common';
+import { EnvironmentConstants, RpcEndpoint } from '@velocity-exchange/common';
 import { Commitment, Connection, Keypair } from '@solana/web3.js';
 import { StoreApi } from 'zustand';
 

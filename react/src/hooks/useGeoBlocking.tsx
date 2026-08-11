@@ -3,7 +3,7 @@ import { useCommonDriftStore } from '../stores';
 import { useDevSwitchIsOn } from './useDevSwitchIsOn';
 import useIsMainnet from './useIsMainnet';
 import { useWalletContext } from './useWalletContext';
-import { GEOBLOCK_LIST } from '@drift/common';
+import { GEOBLOCK_LIST } from '@velocity-exchange/common';
 
 export const checkIfCountryIsBlocked = async () => {
 	if (process.env.NEXT_PUBLIC_IGNORE_GEOBLOCK === 'true') {

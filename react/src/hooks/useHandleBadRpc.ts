@@ -1,5 +1,5 @@
 import { useCurrentRpc } from './useCurrentRpc';
-import { EnvironmentConstants, getResponseTime } from '@drift/common';
+import { EnvironmentConstants, getResponseTime } from '@velocity-exchange/common';
 import { useEffect } from 'react';
 import useIsMainnet from './useIsMainnet';
 

@@ -1,7 +1,7 @@
-import { EnvironmentConstants, RpcEndpoint } from '@drift/common';
+import { EnvironmentConstants, RpcEndpoint } from '@velocity-exchange/common';
 import { useEffect, useMemo, useState } from 'react';
 import { singletonHook } from 'react-singleton-hook';
-import { getResponseTimes } from '@drift/common';
+import { getResponseTimes } from '@velocity-exchange/common';
 import { useCommonDriftStore } from '../stores';
 import { useCurrentRpc } from './useCurrentRpc';
 

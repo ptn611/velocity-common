@@ -13,7 +13,7 @@ import {
 } from '../../stores';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useImmer } from 'use-immer';
-import { ENUM_UTILS, UIMarket } from '@drift/common';
+import { ENUM_UTILS, UIMarket } from '@velocity-exchange/common';
 import { useInterval } from 'react-use';
 
 type OracleClient = ReturnType<typeof getOracleClient>;
