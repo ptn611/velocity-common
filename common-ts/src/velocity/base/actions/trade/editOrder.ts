@@ -2,9 +2,7 @@ import {
 	BN,
 	VelocityClient,
 	OrderTriggerCondition,
-	OrderType,
 	PositionDirection,
-	PostOnlyParams,
 	SlotDurationMs,
 	User,
 } from '@velocity-exchange/sdk';
@@ -14,13 +12,7 @@ import {
 	TransactionInstruction,
 	VersionedTransaction,
 } from '@solana/web3.js';
-import { ENUM_UTILS } from '../../../../utils';
 import invariant from 'tiny-invariant';
-import { getLimitAuctionOrderParams } from './openPerpOrder/auction';
-import {
-	LimitAuctionConfig,
-	LimitOrderParamsOrderConfig,
-} from './openPerpOrder/types';
 import { WithTxnParams } from '../../types';
 
 /**
@@ -39,12 +31,6 @@ interface EditOrderParams {
 	newTriggerPrice?: BN;
 	/** New trigger condition for conditional orders */
 	newTriggerCondition?: OrderTriggerCondition;
-	/** Duration of the auction in slots */
-	auctionDuration?: number;
-	/** Starting price for the auction */
-	auctionStartPrice?: BN;
-	/** Ending price for the auction */
-	auctionEndPrice?: BN;
 	/** Whether the order should only reduce position size */
 	reduceOnly?: boolean;
 	/** Whether the order should only be posted (maker only) */
@@ -67,9 +53,6 @@ export interface CreateEditOrderIxParams {
 	/** Live slot duration, resolved by the caller from `State` */
 	slotDuration: SlotDurationMs;
 	mainSignerOverride?: PublicKey;
-	limitAuctionOrderConfig?: LimitOrderParamsOrderConfig & {
-		limitAuction: LimitAuctionConfig;
-	};
 }
 
 /**
@@ -78,65 +61,20 @@ export interface CreateEditOrderIxParams {
  * @param userPublicKey - The public key of the user who owns the order
  * @param orderId - The ID of the order to edit
  * @param editOrderParams - Parameters containing the new order values
- * @param limitAuctionOrderConfig - Configuration for the limit auction order. If not provided, limit auction will not be enabled when relevant.
  * @returns Promise that resolves to a TransactionInstruction
  */
 export const createEditOrderIx = async (
 	params: CreateEditOrderIxParams
 ): Promise<TransactionInstruction> => {
-	const {
-		velocityClient,
-		user,
-		orderId,
-		editOrderParams,
-		mainSignerOverride,
-		limitAuctionOrderConfig,
-		slotDuration,
-	} = params;
-	const currentOrder = user.getOrder(orderId);
-
-	invariant(currentOrder, 'Current order not found');
-
-	const isLimitOrder = ENUM_UTILS.match(
-		currentOrder.orderType,
-		OrderType.LIMIT
-	);
-
-	let finalEditOrderParams = editOrderParams;
-
-	// handle limit auction if config is provided
-	if (
-		isLimitOrder &&
-		limitAuctionOrderConfig &&
-		ENUM_UTILS.match(currentOrder.postOnly, PostOnlyParams.NONE)
-	) {
-		const limitAuctionOrderParams = await getLimitAuctionOrderParams({
-			velocityClient,
-			user,
-			marketIndex: currentOrder.marketIndex,
-			marketType: currentOrder.marketType,
-			direction: currentOrder.direction,
-			baseAssetAmount: currentOrder.baseAssetAmount,
-			userOrderId: currentOrder.userOrderId,
-			reduceOnly: currentOrder.reduceOnly,
-			postOnly: currentOrder.postOnly,
-			orderConfig: limitAuctionOrderConfig,
-			positionMaxLeverage: editOrderParams.positionMaxLeverage ?? 0,
-			slotDuration,
-		});
-
-		finalEditOrderParams = {
-			...editOrderParams,
-			auctionDuration: limitAuctionOrderParams.auctionDuration ?? undefined,
-			auctionStartPrice: limitAuctionOrderParams.auctionStartPrice,
-			auctionEndPrice: limitAuctionOrderParams.auctionEndPrice,
-		};
-	}
+	const { velocityClient, user, orderId, editOrderParams, mainSignerOverride } =
+		params;
+	// TODO(propamm-ws-B): a book order has no slot, so it modifies through modifyOrderV1.
+	invariant(user.getOrder(orderId), 'Current order not found');
 
 	return velocityClient.getModifyOrderIx(
 		{
 			orderId,
-			...finalEditOrderParams,
+			...editOrderParams,
 		},
 		undefined,
 		{

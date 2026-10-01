@@ -744,13 +744,8 @@ export class CentralServerVelocity {
 			const { swiftOptions, ...rest } =
 				genericRest as CentralServerGetOpenPerpNonMarketOrderTxnParams<true>;
 
-			if (
-				rest.orderConfig.orderType !== 'limit' &&
-				rest.orderConfig.orderType !== 'oracleLimit'
-			) {
-				throw new Error(
-					'Only limit and oracle limit orders are supported with Swift'
-				);
+			if (rest.orderConfig.orderType !== 'limit') {
+				throw new Error('Only limit orders are supported with Swift');
 			}
 
 			return this.velocityClientContextWrapper(
@@ -845,10 +840,8 @@ export class CentralServerVelocity {
 
 	/**
 	 * Single transaction: close isolated position + optionally withdraw collateral.
-	 * Without placeAndTake that atomically fills the close, the entire transaction may FAIL:
-	 * the withdraw ix runs after the close, and if the close did not fill in this tx,
-	 * the whole tx will fail. Strongly consider placeAndTake: { enable: true }
-	 * when closing and withdrawing in the same tx.
+	 * On a book with a speed bump the close rests and fills a few slots later, so it never
+	 * fills in this transaction. A withdraw in the same transaction then fails.
 	 */
 	public async getCloseAndWithdrawIsolatedPerpPositionTxn(
 		params: CentralServerGetCloseAndWithdrawIsolatedPerpPositionTxnParams
@@ -891,7 +884,6 @@ export class CentralServerVelocity {
 					slotDuration: params.slotDuration,
 					positionMaxLeverage: 0,
 					mainSignerOverride: signingAuthority,
-					placeAndTake: params.placeAndTake,
 				});
 				ixs.push(...closeIxs);
 				if (params.withdrawCollateralAfterClose) {
@@ -982,9 +974,8 @@ export class CentralServerVelocity {
 	/**
 	 * Close isolated position + withdraw to wallet in one transaction.
 	 * Flow: close order, then withdraw from isolated directly to wallet (bundle handles settle if needed).
-	 * Without placeAndTake that atomically fills the close, the entire transaction may FAIL:
-	 * the withdraw runs after the close, and if the close did not fill in this tx, the withdraw may fail depending on withdraw amount.
-	 * Strongly consider placeAndTake: { enable: true } when closing and withdrawing.
+	 * On a book with a speed bump the close rests and fills a few slots later, so it never
+	 * fills in this transaction. The withdraw can then fail, depending on its amount.
 	 */
 	public async getCloseAndWithdrawIsolatedPerpPositionToWalletTxn(
 		params: CentralServerGetCloseAndWithdrawIsolatedPerpPositionToWalletTxnParams
@@ -1015,7 +1006,6 @@ export class CentralServerVelocity {
 					slotDuration: params.slotDuration,
 					positionMaxLeverage: 0,
 					mainSignerOverride: signingAuthority,
-					placeAndTake: params.placeAndTake,
 				});
 
 				const perpMarketAccount =

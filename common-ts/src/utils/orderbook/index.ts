@@ -262,9 +262,9 @@ export const getLiquidityPcts = (
 		? (totalCumulativeSize / totalSize) * 100
 		: 0; // This is the portion of the total size of the orderbook that the cumulative size of the liquidity should be occupying.
 
-	const cumulativeRestingSize =
-		totalCumulativeSize - (cumulativeSize?.indicative ?? 0);
-	const cumulativeIndicativeSize = cumulativeSize?.indicative ?? 0;
+	// TODO(propamm-ws-D): decide whether PropAMM depth draws as its own band. It counts as resting until then.
+	const cumulativeRestingSize = totalCumulativeSize;
+	const cumulativeIndicativeSize = 0;
 
 	const restingLiquidityPct =
 		(cumulativeRestingSize / totalCumulativeSize) * cumulativeSizePct; // This is the portion of the width of the orderbook that the resting liquidity should be occupying
@@ -402,17 +402,10 @@ export const getCategorisedLiquidityForLevel = (
 	level: L2Level,
 	basePrecision: BN
 ): CategorisedLiquidity => {
-	const dlobSize = sizeToNum(level?.sources?.dlob ?? ZERO, basePrecision);
-	const vammSize = sizeToNum(level?.sources?.vamm ?? ZERO, basePrecision);
-	const indicativeSize = sizeToNum(
-		level?.sources?.indicative ?? ZERO,
-		basePrecision
-	);
-
 	const categorisedLiquidity: CategorisedLiquidity = {
-		dlob: dlobSize,
-		vamm: vammSize,
-		indicative: indicativeSize,
+		clob: sizeToNum(level?.sources?.clob ?? ZERO, basePrecision),
+		vamm: sizeToNum(level?.sources?.vamm ?? ZERO, basePrecision),
+		propamm: sizeToNum(level?.sources?.propamm ?? ZERO, basePrecision),
 	};
 
 	return categorisedLiquidity;

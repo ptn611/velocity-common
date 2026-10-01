@@ -7,7 +7,6 @@ import {
 	getTriggerMarketOrderParams,
 	getTriggerLimitOrderParams,
 	OrderTriggerCondition,
-	ZERO,
 } from '@velocity-exchange/sdk';
 import { ENUM_UTILS } from '../../utils';
 import { NonMarketOrderParamsConfig } from '../base/actions/trade/openPerpOrder/types';
@@ -164,24 +163,6 @@ export function buildNonMarketOrderParams({
 				userOrderId,
 			});
 		}
-	}
-
-	if (orderType === 'oracleLimit') {
-		if (!orderConfig.oraclePriceOffset) {
-			throw new Error('ORACLE orders require oraclePriceOffset');
-		}
-
-		return getLimitOrderParams({
-			marketIndex,
-			marketType,
-			direction,
-			baseAssetAmount,
-			price: ZERO,
-			oraclePriceOffset: orderConfig.oraclePriceOffset,
-			userOrderId,
-			postOnly,
-			reduceOnly,
-		});
 	}
 
 	throw new Error(`Unsupported order type: ${orderType}`);
