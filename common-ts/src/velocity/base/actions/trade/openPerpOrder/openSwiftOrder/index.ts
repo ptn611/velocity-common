@@ -3,6 +3,7 @@ import {
 	SignedMsgOrderParamsDelegateMessage,
 	SignedMsgOrderParamsMessage,
 	signedMsgNetworkForEnv,
+	signedMsgSigningBytes,
 } from '@velocity-exchange/sdk';
 import {
 	BN,
@@ -173,15 +174,17 @@ export interface SwiftOrderOptions {
  * This is the output of the "prep" step, before signing occurs.
  *
  * Consumers should:
- * 1. Sign `hexEncodedSwiftOrderMessage.uInt8Array` with the user's wallet
+ * 1. Sign `signingBytes` with the user's wallet
  * 2. Send the signed message along with the other fields to the SWIFT server
  */
 export interface SwiftOrderMessage {
-	/** The encoded order message in both Uint8Array (for signing) and string (for sending) formats */
+	/** The encoded order message, as bytes and as the string the SWIFT server is sent */
 	hexEncodedSwiftOrderMessage: {
 		uInt8Array: Uint8Array;
 		string: string;
 	};
+	/** What the taker signs: the program's domain prefix, then the hex message */
+	signingBytes: Uint8Array;
 	/** The order parameters message that was encoded */
 	signedMsgOrderParamsMessage:
 		| SignedMsgOrderParamsMessage
@@ -295,6 +298,7 @@ export const prepSwiftOrder = ({
 		uInt8Array: Uint8Array;
 		string: string;
 	};
+	signingBytes: Uint8Array;
 	signedMsgOrderParamsMessage:
 		| SignedMsgOrderParamsMessage
 		| SignedMsgOrderParamsDelegateMessage;
@@ -369,6 +373,12 @@ export const prepSwiftOrder = ({
 			uInt8Array: new Uint8Array(hexEncodedSwiftOrderMessage),
 			string: hexEncodedSwiftOrderMessage.toString(),
 		},
+		signingBytes: new Uint8Array(
+			signedMsgSigningBytes(
+				velocityClient.program.programId,
+				hexEncodedSwiftOrderMessage
+			)
+		),
 		signedMsgOrderParamsMessage,
 		slotForSignedMsg: messageSlot,
 		signedMsgOrderUuid,
@@ -400,8 +410,8 @@ interface SignOrderMsgParams {
 		/** Function to sign a message */
 		signMessage: (message: Uint8Array) => Promise<Uint8Array>;
 	};
-	/** Hex-encoded swift order message to sign */
-	hexEncodedSwiftOrderMessage: Uint8Array;
+	/** The prefixed bytes to sign, `SwiftOrderMessage.signingBytes` */
+	signingBytes: Uint8Array;
 	/** Absolute slot after which the order must no longer be signed */
 	signingDeadlineSlot: number;
 	/** Time in milliseconds till signing must stop */
@@ -429,7 +439,7 @@ interface SignOrderMsgParams {
  */
 export const signSwiftOrderMsg = async ({
 	wallet,
-	hexEncodedSwiftOrderMessage,
+	signingBytes,
 	signingDeadlineSlot,
 	expirationTimeMs,
 	slotSource,
@@ -440,9 +450,7 @@ export const signSwiftOrderMsg = async ({
 
 	try {
 		// Sign the message
-		const signedMessagePromise = wallet.signMessage(
-			hexEncodedSwiftOrderMessage
-		);
+		const signedMessagePromise = wallet.signMessage(signingBytes);
 
 		const signingExpiredPromise = new Promise<never>((_resolve, reject) => {
 			const expire = () => {
@@ -654,6 +662,7 @@ export const prepSwiftOrderMessage = async ({
 
 	const {
 		hexEncodedSwiftOrderMessage,
+		signingBytes,
 		signedMsgOrderUuid,
 		signedMsgOrderParamsMessage,
 		slotForSignedMsg,
@@ -682,6 +691,7 @@ export const prepSwiftOrderMessage = async ({
 
 	return {
 		hexEncodedSwiftOrderMessage,
+		signingBytes,
 		signedMsgOrderParamsMessage,
 		slotForSignedMsg,
 		signedMsgOrderUuid,
@@ -768,6 +778,7 @@ export const prepSignAndSendSwiftOrder = async ({
 }: PrepSignAndSendSwiftOrderParams): Promise<void> => {
 	const {
 		hexEncodedSwiftOrderMessage,
+		signingBytes,
 		signedMsgOrderUuid,
 		signedMsgOrderParamsMessage,
 		slotsTillPlacementDeadline,
@@ -793,7 +804,7 @@ export const prepSignAndSendSwiftOrder = async ({
 	// Ensure that the user signs the message before the expiration time
 	const signedMessage = await signSwiftOrderMsg({
 		wallet: swiftOptions.wallet,
-		hexEncodedSwiftOrderMessage: hexEncodedSwiftOrderMessage.uInt8Array,
+		signingBytes,
 		signingDeadlineSlot,
 		expirationTimeMs,
 		slotSource: swiftOptions.slotSource,

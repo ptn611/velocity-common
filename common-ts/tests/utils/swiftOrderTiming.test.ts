@@ -31,6 +31,7 @@ const CURRENT_SLOT = 1_000_000;
 const clientStub = () =>
 	({
 		env: 'devnet',
+		program: { programId: PublicKey.default },
 		connection: {
 			getSlot: async () => CURRENT_SLOT,
 		},
@@ -78,6 +79,18 @@ const timing = (main: OptionalOrderParams, slotDuration: SlotDurationMs) =>
 		slotDuration,
 		orderParams: { main },
 	});
+
+describe('swift signing bytes', () => {
+	it('prefixes the hex message with the program domain the program verifies against', async () => {
+		const message = await timing(marketOrder(), 400 as SlotDurationMs);
+		const prefix = `velocity-signed-msg:${PublicKey.default.toBase58()}:`;
+
+		expect(Buffer.from(message.signingBytes).toString()).to.equal(
+			prefix +
+				Buffer.from(message.hexEncodedSwiftOrderMessage.uInt8Array).toString()
+		);
+	});
+});
 
 describe('swift order timing', () => {
 	it('stamps a market order at the current slot, which the program requires', async () => {

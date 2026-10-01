@@ -318,8 +318,7 @@ async function signAndSendSwiftOrderMessage(
 				return new Uint8Array(signature);
 			},
 		},
-		hexEncodedSwiftOrderMessage:
-			swiftMessage.hexEncodedSwiftOrderMessage.uInt8Array,
+		signingBytes: swiftMessage.signingBytes,
 		signingDeadlineSlot: swiftMessage.signingDeadlineSlot,
 		expirationTimeMs: swiftMessage.expirationTimeMs,
 	});
