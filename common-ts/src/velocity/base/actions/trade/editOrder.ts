@@ -1,5 +1,6 @@
 import {
 	BN,
+	ModifyOrderV1Params,
 	VelocityClient,
 	OrderTriggerCondition,
 	PositionDirection,
@@ -56,7 +57,8 @@ export interface CreateEditOrderIxParams {
 }
 
 /**
- * Creates a transaction instruction to edit an existing order
+ * Edits a slot order, which is an armed trigger. A book order has no slot, so it goes through
+ * `createModifyClobOrderIx`.
  * @param velocityClient - The VelocityClient instance
  * @param userPublicKey - The public key of the user who owns the order
  * @param orderId - The ID of the order to edit
@@ -68,7 +70,6 @@ export const createEditOrderIx = async (
 ): Promise<TransactionInstruction> => {
 	const { velocityClient, user, orderId, editOrderParams, mainSignerOverride } =
 		params;
-	// TODO(propamm-ws-B): a book order has no slot, so it modifies through modifyOrderV1.
 	invariant(user.getOrder(orderId), 'Current order not found');
 
 	return velocityClient.getModifyOrderIx(
@@ -102,5 +103,32 @@ export const createEditOrderTxn = async ({
 	return params.velocityClient.buildTransaction(
 		await createEditOrderIx(params),
 		txParams
+	);
+};
+
+interface CreateModifyClobOrderIxParams {
+	velocityClient: VelocityClient;
+	user: User;
+	modify: ModifyOrderV1Params;
+	/** The feed's `takerOrigin` flag. A modified taker remainder rests as a maker order. */
+	takerOrigin: boolean;
+	mainSignerOverride?: PublicKey;
+}
+
+/**
+ * Reprices or resizes a resting book order. The order keeps its id and loses its queue position.
+ * A `rejectIfCrossed` modify that the book refuses leaves no order at all.
+ */
+export const createModifyClobOrderIx = async (
+	params: CreateModifyClobOrderIxParams
+): Promise<TransactionInstruction> => {
+	const { velocityClient, user, modify, takerOrigin, mainSignerOverride } =
+		params;
+
+	return velocityClient.getModifyOrderV1Ix(
+		modify,
+		user.getUserAccountOrThrow().subAccountId,
+		takerOrigin,
+		{ authority: mainSignerOverride }
 	);
 };
