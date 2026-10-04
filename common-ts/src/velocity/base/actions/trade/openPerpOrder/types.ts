@@ -66,6 +66,11 @@ export interface LimitOrderParamsOrderConfig {
 	 */
 	marketable?: boolean;
 	takerEscrow?: TakerEscrowOverride;
+	/**
+	 * Unix seconds after which the order expires, on the chain's clock. A relay crank removes
+	 * an expired order from the book. Absent means the order never expires.
+	 */
+	maxTs?: BN;
 }
 
 export type SwiftLimitOrderParamsOrderConfig = LimitOrderParamsOrderConfig;

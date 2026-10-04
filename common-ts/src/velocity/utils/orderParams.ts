@@ -124,6 +124,7 @@ export function buildNonMarketOrderParams({
 			reduceOnly,
 			postOnly,
 			userOrderId,
+			maxTs: orderConfig.maxTs ?? null,
 		});
 	}
 
