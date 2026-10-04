@@ -262,15 +262,10 @@ export const getLiquidityPcts = (
 		? (totalCumulativeSize / totalSize) * 100
 		: 0; // This is the portion of the total size of the orderbook that the cumulative size of the liquidity should be occupying.
 
-	// TODO(propamm-ws-D): decide whether PropAMM depth draws as its own band. It counts as resting until then.
-	const cumulativeRestingSize = totalCumulativeSize;
-	const cumulativeIndicativeSize = 0;
-
-	const restingLiquidityPct =
-		(cumulativeRestingSize / totalCumulativeSize) * cumulativeSizePct; // This is the portion of the width of the orderbook that the resting liquidity should be occupying
-
-	const indicativeLiquidityPct =
-		(cumulativeIndicativeSize / totalCumulativeSize) * cumulativeSizePct; // This is the portion of the width of the orderbook that the indicative liquidity should be occupying
+	// Every source draws as resting. PropAMM quotes are firm and fill on chain,
+	// unlike the indicative quotes the gradient band was for.
+	const restingLiquidityPct = cumulativeSizePct;
+	const indicativeLiquidityPct = 0;
 
 	return {
 		restingLiquidityPct,

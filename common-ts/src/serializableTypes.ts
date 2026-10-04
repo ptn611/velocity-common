@@ -2181,7 +2181,7 @@ export function transformDataApiOrderRecordToUISerializableOrderRecord(
 			existingPositionDirection: deserializedV2Record.existingPositionDirection,
 			auctionDuration: deserializedV2Record.auctionDuration,
 			unusedAuctionDuration: 0,
-			// TODO(propamm-ws-D): read the CLOB node and order id once the Data API record carries them.
+			// Only a live trigger-limit shadow slot carries a book ref, and a history record is never one.
 			clobNodeIndex: ZERO,
 			clobOrderId: ZERO,
 			padding: [],
@@ -2232,7 +2232,7 @@ export function transformDataApiOrderRecordToSerializableOrderRecord(
 			immediateOrCancel: deserializedV2Record.immediateOrCancel,
 			existingPositionDirection: deserializedV2Record.existingPositionDirection,
 			unusedAuctionDuration: 0,
-			// TODO(propamm-ws-D): read the CLOB node and order id once the Data API record carries them.
+			// Only a live trigger-limit shadow slot carries a book ref, and a history record is never one.
 			clobNodeIndex: ZERO,
 			clobOrderId: ZERO,
 			padding: [],
