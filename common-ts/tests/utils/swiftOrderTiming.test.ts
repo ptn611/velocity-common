@@ -35,6 +35,7 @@ const clientStub = () =>
 		connection: {
 			getSlot: async () => CURRENT_SLOT,
 		},
+		getCustomQuoterRoute: async () => [],
 		encodeSignedMsgOrderParamsMessage: () => Buffer.from([1, 2, 3]),
 	}) as unknown as VelocityClient;
 

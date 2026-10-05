@@ -265,6 +265,11 @@ interface PrepSwiftOrderParams {
 		 */
 		builderFeeTenthBps: number;
 	};
+	/**
+	 * `QuoterV0` entry keys of the `Custom` quoters (PropAMMs) the taker signs for. The placer
+	 * carries them, and they can fill the order once it has served the market's speed bump.
+	 */
+	route?: PublicKey[];
 }
 
 /**
@@ -293,6 +298,7 @@ export const prepSwiftOrder = ({
 	orderParams,
 	userSigningSlotBuffer,
 	builderParams,
+	route,
 }: PrepSwiftOrderParams): {
 	hexEncodedSwiftOrderMessage: {
 		uInt8Array: Uint8Array;
@@ -346,6 +352,7 @@ export const prepSwiftOrder = ({
 		builderIdx: builderParams?.builderIdx ?? null,
 		builderFeeTenthBps: builderParams?.builderFeeTenthBps ?? null,
 		network: signedMsgNetworkForEnv(velocityClient.env),
+		route: route?.length ? route : null,
 	};
 
 	const signedMsgOrderParamsMessage:
@@ -658,7 +665,10 @@ export const prepSwiftOrderMessage = async ({
 	orderParams,
 	builderParams,
 }: PrepSwiftOrderMessageParams): Promise<SwiftOrderMessage> => {
-	const currentSlot = await velocityClient.connection.getSlot('confirmed');
+	const [currentSlot, route] = await Promise.all([
+		velocityClient.connection.getSlot('confirmed'),
+		velocityClient.getCustomQuoterRoute(marketIndex),
+	]);
 
 	const {
 		hexEncodedSwiftOrderMessage,
@@ -679,6 +689,7 @@ export const prepSwiftOrderMessage = async ({
 		orderParams,
 		userSigningSlotBuffer,
 		builderParams,
+		route,
 	});
 
 	const { slotsTillPlacementDeadline, signingDeadlineSlot, expirationTimeMs } =
