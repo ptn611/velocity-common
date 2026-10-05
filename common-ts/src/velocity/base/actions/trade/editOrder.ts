@@ -58,21 +58,22 @@ export interface CreateEditOrderIxParams {
 
 /**
  * Edits a slot order, which is an armed trigger. A book order has no slot, so it goes through
- * `createModifyClobOrderIx`.
+ * `createModifyClobOrderIx`. The modify replaces the order under a new order id, so the second
+ * instruction re-syncs the trigger's relay watch. Without it the edited trigger never fires.
  * @param velocityClient - The VelocityClient instance
  * @param userPublicKey - The public key of the user who owns the order
  * @param orderId - The ID of the order to edit
  * @param editOrderParams - Parameters containing the new order values
- * @returns Promise that resolves to a TransactionInstruction
+ * @returns Promise that resolves to the modify and trigger sync instructions
  */
-export const createEditOrderIx = async (
+export const createEditOrderIxs = async (
 	params: CreateEditOrderIxParams
-): Promise<TransactionInstruction> => {
+): Promise<TransactionInstruction[]> => {
 	const { velocityClient, user, orderId, editOrderParams, mainSignerOverride } =
 		params;
 	invariant(user.getOrder(orderId), 'Current order not found');
 
-	return velocityClient.getModifyOrderIx(
+	return velocityClient.getModifyOrderIxs(
 		{
 			orderId,
 			...editOrderParams,
@@ -101,7 +102,7 @@ export const createEditOrderTxn = async ({
 	...params
 }: CreateEditOrderTxnParams): Promise<Transaction | VersionedTransaction> => {
 	return params.velocityClient.buildTransaction(
-		await createEditOrderIx(params),
+		await createEditOrderIxs(params),
 		txParams
 	);
 };
