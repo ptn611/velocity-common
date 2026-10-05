@@ -101,13 +101,20 @@ export const deserializeL2Response = (
 		marketType: serializedOrderbook.marketType,
 		marketIndex: serializedOrderbook.marketIndex,
 		marketName: serializedOrderbook.marketName,
-		markPrice: new BN(serializedOrderbook.markPrice),
-		bestBidPrice: new BN(serializedOrderbook.bestBidPrice),
-		bestAskPrice: new BN(serializedOrderbook.bestAskPrice),
-		spreadPct: new BN(serializedOrderbook.spreadPct),
-		spreadQuote: new BN(serializedOrderbook.spreadQuote),
+		markPrice: bnOrZero(serializedOrderbook.markPrice),
+		bestBidPrice: bnOrZero(serializedOrderbook.bestBidPrice),
+		bestAskPrice: bnOrZero(serializedOrderbook.bestAskPrice),
+		spreadPct: bnOrZero(serializedOrderbook.spreadPct),
+		spreadQuote: bnOrZero(serializedOrderbook.spreadQuote),
 	};
 };
+
+/**
+ * A book with an empty side has no best price or spread, and a publisher can send the field
+ * as null. bn.js reads `undefined` as zero but runs out of memory on a null.
+ */
+const bnOrZero = (value: string | number | null | undefined): BN =>
+	new BN(value ?? 0);
 
 export const convertToL2OrderBook = (
 	l2Data: L2WithOracleAndMarketData[]
