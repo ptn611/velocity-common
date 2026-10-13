@@ -18,7 +18,11 @@ import {
 	slotsToMsNum,
 } from '@velocity-exchange/sdk';
 import { ENUM_UTILS } from '../../../../../../utils';
-import { getSwiftConfirmationTimeoutMs } from '../../../../../../utils/signedMsgs';
+import {
+	getSwiftConfirmationDeadlineMs,
+	getSwiftConfirmationTimeoutMs,
+	getSwiftPlacementDeadlineMs,
+} from '../../../../../../utils/signedMsgs';
 import {
 	SwiftClient,
 	SwiftOrderConfirmedEvent,
@@ -197,6 +201,8 @@ export interface SwiftOrderMessage {
 	marketIndex: number;
 	/** Slots until the program stops placing the order (used for confirmation timeout) */
 	slotsTillPlacementDeadline: number;
+	/** Wall time in ms after which the program no longer places the order */
+	placementDeadlineMs: number;
 	/** Absolute slot after which the order must no longer be signed */
 	signingDeadlineSlot: number;
 	/** Time in milliseconds before the signing window expires */
@@ -521,6 +527,11 @@ interface SendSwiftOrderParams {
 	confirmationMultiplier?: number;
 	/** Optionally send a different connection for the confirmation step, possibly for a faster commitment */
 	confirmationConnection?: Connection;
+	/**
+	 * Wall time in ms after which the program no longer places the order. When given, the
+	 * confirmation wait ends a margin past it rather than after the timeout from send time.
+	 */
+	placementDeadlineMs?: number;
 }
 
 /**
@@ -555,6 +566,7 @@ export const sendSwiftOrder = ({
 	slotDuration,
 	confirmationMultiplier,
 	confirmationConnection,
+	placementDeadlineMs,
 }: SendSwiftOrderParams): SwiftOrderObservable => {
 	const signedMsgUserOrdersAccountPubkey = getSignedMsgUserAccountPublicKey(
 		velocityClient.program.programId,
@@ -576,7 +588,13 @@ export const sendSwiftOrder = ({
 			confirmationMultiplier,
 			slotDuration
 		),
-		signingAuthority
+		signingAuthority,
+		placementDeadlineMs === undefined
+			? undefined
+			: getSwiftConfirmationDeadlineMs(
+					placementDeadlineMs,
+					confirmationMultiplier
+				)
 	);
 
 	return swiftOrderObservable;
@@ -692,6 +710,7 @@ export const prepSwiftOrderMessage = async ({
 		route,
 	});
 
+	const preppedAtMs = Date.now();
 	const { slotsTillPlacementDeadline, signingDeadlineSlot, expirationTimeMs } =
 		computeSwiftOrderTiming(
 			orderParams.main,
@@ -708,6 +727,11 @@ export const prepSwiftOrderMessage = async ({
 		signedMsgOrderUuid,
 		marketIndex,
 		slotsTillPlacementDeadline,
+		placementDeadlineMs: getSwiftPlacementDeadlineMs(
+			preppedAtMs,
+			slotsTillPlacementDeadline,
+			slotDuration
+		),
 		signingDeadlineSlot,
 		expirationTimeMs,
 	};
@@ -793,6 +817,7 @@ export const prepSignAndSendSwiftOrder = async ({
 		signedMsgOrderUuid,
 		signedMsgOrderParamsMessage,
 		slotsTillPlacementDeadline,
+		placementDeadlineMs,
 		signingDeadlineSlot,
 		expirationTimeMs,
 	} = await prepSwiftOrderMessage({
@@ -844,6 +869,7 @@ export const prepSignAndSendSwiftOrder = async ({
 			swiftOptions.wallet.signingAuthority ??
 			swiftOptions.wallet.takerAuthority,
 		slotsTillPlacementDeadline,
+		placementDeadlineMs,
 		slotDuration,
 		confirmationMultiplier,
 		confirmationConnection: new Connection(

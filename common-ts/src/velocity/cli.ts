@@ -337,6 +337,7 @@ async function signAndSendSwiftOrderMessage(
 		takerAuthority: wallet.publicKey,
 		signingAuthority: wallet.publicKey,
 		slotsTillPlacementDeadline: swiftMessage.slotsTillPlacementDeadline,
+		placementDeadlineMs: swiftMessage.placementDeadlineMs,
 		slotDuration: await resolveSlotDuration(),
 	});
 
