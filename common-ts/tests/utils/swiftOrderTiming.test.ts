@@ -131,6 +131,20 @@ describe('swift order timing', () => {
 		}
 	});
 
+	it('puts the placement deadline in wall time the placement window after prep', async () => {
+		for (const slotDuration of GATES) {
+			for (const main of [marketOrder(), restingLimitOrder()]) {
+				const beforeMs = Date.now();
+				const { placementDeadlineMs } = await timing(main, slotDuration);
+				const windowMs =
+					placementDeadlineOffset(main, slotDuration) * slotDuration;
+
+				expect(placementDeadlineMs).to.be.at.least(beforeMs + windowMs);
+				expect(placementDeadlineMs).to.be.at.most(Date.now() + windowMs);
+			}
+		}
+	});
+
 	it('expresses the signing window in ms at the live duration', async () => {
 		for (const slotDuration of GATES) {
 			const { signingDeadlineSlot, expirationTimeMs } = await timing(
