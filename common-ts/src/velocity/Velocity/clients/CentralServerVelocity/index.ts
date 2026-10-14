@@ -33,6 +33,9 @@ import {
 	WhileValidTxSender,
 	ZERO,
 	SwapQuote,
+	UserClobOrder,
+	getVariant,
+	isVariant,
 } from '@velocity-exchange/sdk';
 import {
 	Connection,
@@ -69,7 +72,11 @@ import {
 import { SwiftOrderMessage } from '../../../base/actions/trade/openPerpOrder/openSwiftOrder';
 import { SwiftLimitOrderParamsOrderConfig } from '../../../base/actions/trade/openPerpOrder/types';
 import { createEditOrderTxn } from '../../../base/actions/trade/editOrder';
-import { createCancelOrdersTxn } from '../../../base/actions/trade/cancelOrder';
+import {
+	createCancelAllClobOrdersIx,
+	createCancelClobOrderIx,
+	createCancelOrdersIx,
+} from '../../../base/actions/trade/cancelOrder';
 import { createSwapTxn } from '../../../base/actions/trade/swap';
 import {
 	createUserAndDepositCollateralBaseTxn,
@@ -1088,51 +1095,111 @@ export class CentralServerVelocity {
 	}
 
 	/**
-	 * Create a transaction to cancel specific orders by their IDs
+	 * Create a transaction to cancel specific orders by their IDs. A resting limit holds no
+	 * `User.orders` slot, so pass the user's book orders from the user-orders feed. An id that
+	 * names one of them cancels it on the book.
 	 */
 	public async getCancelOrdersTxn(
 		userAccountPublicKey: PublicKey,
-		orderIds: number[]
+		orderIds: number[],
+		clobOrders: UserClobOrder[] = []
 	): Promise<VersionedTransaction | Transaction> {
 		return this.velocityClientContextWrapper(
 			userAccountPublicKey,
 			async (user) => {
-				const cancelOrdersTxn = await createCancelOrdersTxn({
-					velocityClient: this._velocityClient,
-					user,
-					orderIds,
-				});
+				const clobById = new Map(
+					clobOrders.map((order) => [order.orderId, order])
+				);
+				const slotOrderIds = orderIds.filter((id) => !clobById.has(id));
+				const bookOrders = orderIds.flatMap((id) => clobById.get(id) ?? []);
 
-				return cancelOrdersTxn;
+				const ixs = await Promise.all([
+					...(slotOrderIds.length > 0
+						? [
+								createCancelOrdersIx({
+									velocityClient: this._velocityClient,
+									user,
+									orderIds: slotOrderIds,
+								}),
+							]
+						: []),
+					...bookOrders.map((order) => this.cancelClobOrderIx(user, order)),
+				]);
+
+				return this._velocityClient.buildTransaction(ixs);
 			}
 		);
 	}
 
 	/**
-	 * Create a transaction to cancel all orders for a user
+	 * Create a transaction to cancel all orders for a user. Pass the user's book orders from the
+	 * user-orders feed, so the transaction also sweeps each market they rest in. A sweep leaves
+	 * taker remainders, so each remainder gets its own cancel.
 	 */
 	public async getCancelAllOrdersTxn(
 		userAccountPublicKey: PublicKey,
 		marketType?: MarketType,
 		marketIndex?: number,
-		direction?: PositionDirection
+		direction?: PositionDirection,
+		clobOrders: UserClobOrder[] = []
 	): Promise<VersionedTransaction | Transaction> {
 		return this.velocityClientContextWrapper(
 			userAccountPublicKey,
 			async (user) => {
-				const ix = await this._velocityClient.getCancelOrdersIx(
-					marketType ?? null,
-					marketIndex ?? null,
-					direction ?? null,
-					user.getUserAccountOrThrow().subAccountId
+				const inScope = clobOrders.filter(
+					(order) =>
+						(marketIndex === undefined || order.marketIndex === marketIndex) &&
+						(direction === undefined ||
+							getVariant(order.direction) === getVariant(direction))
 				);
+				const sweptMarkets = [
+					...new Set(
+						inScope
+							.filter((order) => !order.takerOrigin)
+							.map((order) => order.marketIndex)
+					),
+				];
+				const remainders = inScope.filter((order) => order.takerOrigin);
+				const sweepsBook =
+					direction === undefined &&
+					(marketType === undefined || !isVariant(marketType, 'spot'));
 
-				const cancelAllOrdersTxn =
-					await this._velocityClient.buildTransaction(ix);
+				const ixs = await Promise.all([
+					this._velocityClient.getCancelOrdersIx(
+						marketType ?? null,
+						marketIndex ?? null,
+						direction ?? null,
+						user.getUserAccountOrThrow().subAccountId
+					),
+					...(sweepsBook
+						? sweptMarkets.map((bookMarketIndex) =>
+								createCancelAllClobOrdersIx({
+									velocityClient: this._velocityClient,
+									user,
+									marketIndex: bookMarketIndex,
+								})
+							)
+						: inScope
+								.filter((order) => !order.takerOrigin)
+								.map((order) => this.cancelClobOrderIx(user, order))),
+					...remainders.map((order) => this.cancelClobOrderIx(user, order)),
+				]);
 
-				return cancelAllOrdersTxn;
+				return this._velocityClient.buildTransaction(ixs);
 			}
 		);
+	}
+
+	private cancelClobOrderIx(user: User, order: UserClobOrder) {
+		return createCancelClobOrderIx({
+			velocityClient: this._velocityClient,
+			user,
+			order: {
+				marketIndex: order.marketIndex,
+				orderRef: { nodeIndex: order.nodeIndex, orderId: order.clobOrderId },
+			},
+			takerOrigin: order.takerOrigin,
+		});
 	}
 
 	/**
